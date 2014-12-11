@@ -148,17 +148,3 @@ Average.weekdays <- aggregate(cbind(Total,PedIN,PedOUT,BikeIN,BikeOUT,PedTOTAL,B
                          ~ time+time.text+Day+Location+CounterID+Likely.abnormal+OPM.action+Other.events,
                          data=Arl_MUT_Cleaned[Arl_MUT_Cleaned$Workday == TRUE,],mean,na.action = na.pass
 )
-
-# test plot
-p <- ggplot(Averagedays[Averagedays$Workday == TRUE && Averagedays$Location == "Custis_Rosslyn",],
- aes(x = time, y = Total)) + geom_line()
-p + scale_x_chron(format="%H:%M")
-
-
-Melted_Workdays <- Arl_MUT_Melt[Arl_MUT_Melt$Workday==TRUE,]
-p <- ggplot(Melted_Workdays[Averagedays$Location == "Custis_Rosslyn",],aes(x=datetime,y=value,group=variable))
-p + geom_line()
-
-p <- ggplot(Melted_Workdays[Averagedays$Location == "Custis_Rosslyn",], aes(x = datetime)) + geom_bar(binwidth=1/24/60)
-p + scale_x_chron(format="%H:%M")
-            
