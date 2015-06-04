@@ -23,21 +23,28 @@ p <- ggplot(Averagedays[Averagedays$Workday &
                           !Averagedays$OPM.action & 
                           Averagedays$Location == "Custis_Rosslyn",],
                           aes(x = time, y = Total)) + geom_line()
-p + scale_x_chron(format="%Y-%m-%d %H:%M, %Z") + ggtitle("Average workday traffic\nCustis_Rosslyn, both directions")
+p + 
+  scale_x_chron(format="%Y-%m-%d %H:%M, %Z") + 
+  ggtitle("Average workday traffic\nCustis_Rosslyn, both directions")
 
 # test plot: typical weekday for each counter, arranged in facets
 p <- ggplot(Averagedays[Averagedays$Workday & 
                           !Averagedays$Likely.abnormal & 
                           !Averagedays$OPM.action,],
-            aes(x = time, y = Total)) + geom_line()+ scale_x_chron(format="%H:%M",n=8) 
-p + ggtitle("Average workday traffic\nby counter, both directions") + facet_grid(Location ~ .)
+            aes(x = time, y = Total)) + 
+  geom_line() + 
+  scale_x_chron(format="%H:%M",n=8, minor_breaks=seq(0,1,1/24))
+p + 
+  ggtitle("Average workday traffic\nby counter, both directions") + 
+  facet_grid(Location ~ .)
 
+# test plot: typical weekday for each counter, arranged in facets, divided by direction/type
+p <- ggplot(Averagedays_long[Averagedays_long$Workday & 
+                          !Averagedays_long$Likely.abnormal & 
+                          !Averagedays_long$OPM.action &
+                          Averagedays_long$variable %in% c("PedIN","PedOUT","BikeIN","BikeOUT","PedTOTAL","BikeTOTAL"),],
+            aes(x = time, y = value, color = variable)) + geom_line()+ scale_x_chron(format="%H:%M",n=8) 
+p + 
+  ggtitle("Average workday traffic\nby counter") + 
+  facet_grid(Location ~ .)
 
-#p + scale_x_chron(format="%Y-%m-%d %H:%M, %Z") + ggtitle("Average workday traffic\nCustis_Rosslyn, both directions") + 
-
-Melted_Workdays <- Arl_MUT_Melt[Arl_MUT_Melt$Workday==TRUE,]
-p <- ggplot(Melted_Workdays[Averagedays$Location == "Custis_Rosslyn",],aes(x=datetime,y=value,group=variable))
-p + geom_line() + 
-
-p <- ggplot(Melted_Workdays[Averagedays$Location == "Custis_Rosslyn",], aes(x = datetime)) + geom_bar(binwidth=1/24/60)
-p + scale_x_chron(format="%H:%M", n=24)

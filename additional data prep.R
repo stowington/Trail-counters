@@ -152,3 +152,14 @@ Average.weekdays <- aggregate(cbind(Total,PedIN,PedOUT,BikeIN,BikeOUT,PedTOTAL,B
                          ~ time+time.text+Day+Location+CounterID+Likely.abnormal+OPM.action+Other.events,
                          data=Arl_MUT_Cleaned[Arl_MUT_Cleaned$Workday == TRUE,],mean,na.action = na.pass
 )
+
+# ... and melted, averaged
+Averagedays_long <- melt(as.data.frame(lapply(Averagedays,as.vector)), measure.vars = c("PedIN","PedOUT","BikeIN","BikeOUT","Total","PedTOTAL","BikeTOTAL","TotalOUT","TotalIN"),
+                     id.vars=c("time","time.text","Location",
+                               "Holiday","Likely.abnormal","OPM.action","Other.events",
+                               "Weekend","Workday"))
+Averagedays_long$Mode <- ifelse(grepl("Ped",Averagedays_long$variable),"Ped","Bike")
+Averagedays_long$Dir <- ifelse(grepl("IN",Averagedays_long$variable),"In","Out")
+
+write.csv(Averagedays_long, "Averagedays_Melt.csv")
+save(Averagedays_long, file="Averagedays_Melt.Rda")
