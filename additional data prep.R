@@ -35,10 +35,11 @@ holidays$Date <- as.Date(holidays$Date,format="%d/%m/%Y")
 #setting the time to actual time of day, including adding seconds.. cuz. we can? -- Because the time conversion didn't work without it! -John
 Arl_MUT_Combined$time.text <- Arl_MUT_Combined$time
 Arl_MUT_Combined$time <- times(paste(Arl_MUT_Combined$time,":00",sep=""),format="h:m:s")
+#Arl_MUT_Combined$time <- as.POSIXct(Arl_MUT_Combined$time,format="%H:%M",tz="EST")
 Arl_MUT_Combined <- Arl_MUT_Combined[!is.na(Arl_MUT_Combined$time),]
 
 #Create a combined datetime field, useful for plotting over ranges like weeks
-Arl_MUT_Combined$datetime <- as.POSIXct(paste(Arl_MUT_Combined$Date, Arl_MUT_Combined$time), format="%d/%m/%Y %H:%M:%S")
+Arl_MUT_Combined$datetime <- as.POSIXct(paste(Arl_MUT_Combined$Date, Arl_MUT_Combined$time), format="%d/%m/%Y %H:%M:%S",tz="EST")
 
 #Arl_MUT_Combined$time <- strptime(Arl_MUT_Combined$time, "%H:%M:%S", tz = "")
 #using awesome weekdays function to appropriately tag dates with days of the week and create a new column for that
@@ -125,6 +126,9 @@ Arl_MUT_Melt <- melt(as.data.frame(lapply(Arl_MUT_Cleaned,as.vector)), measure.v
                                "Weekend","Workday"))
 Arl_MUT_Melt$Mode <- ifelse(grepl("Ped",Arl_MUT_Melt$variable),"Ped","Bike")
 Arl_MUT_Melt$Dir <- ifelse(grepl("IN",Arl_MUT_Melt$variable),"In","Out")
+
+write.csv(Arl_MUT_Melt, "Arl_MUT_Melt.csv")
+save(Arl_MUT_Melt, file="Arl_MUT_Melt.Rda")
 
 # aggregate over periods of the day, using rush periods as defined by WMATA bike restrictions
 rushbins <- times(c("00:00:00","07:00:00","10:00:00","16:00:00","19:00:00","23:59:59"))
