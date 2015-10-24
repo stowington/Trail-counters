@@ -12,6 +12,7 @@ Sys.setenv(TZ='GMT')
 setwd("~/Dropbox/VT coursework/Capstone/Analysis") # Dir for prepped data on John's computer
 load("Averagedays.Rda")
 load("RushCounts.Rda")
+load("Averagedays_long.Rda")
 
 
 
@@ -42,7 +43,7 @@ p +
 p <- ggplot(Averagedays_long[Averagedays_long$Workday & 
                           !Averagedays_long$Likely.abnormal & 
                           !Averagedays_long$OPM.action &
-                          Averagedays_long$variable %in% c("PedIN","PedOUT","BikeIN","BikeOUT","PedTOTAL","BikeTOTAL"),],
+                          Averagedays_long$variable %in% c("PedIN","PedOUT","BikeIN","BikeOUT","PedTOTAL","BikeTOTAL","Total"),],
             aes(x = time, y = value, color = variable)) + geom_line()+ scale_x_chron(format="%H:%M",n=8) 
 p + 
   ggtitle("Average workday traffic\nby counter") + 

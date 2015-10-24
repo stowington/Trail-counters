@@ -77,9 +77,10 @@ for (i in counters) Arl_MUT_Combined$DeleteMe[Arl_MUT_Combined$CounterID == i &
                                                   Arl_MUT_Combined$CounterID == i])]<- TRUE
 #what are those first days? It will be useful for the report
 firstDays <- aggregate(Date ~ CounterID, data= Arl_MUT_Combined[!is.na(Arl_MUT_Combined$Total),],min)
+
 #find weeks where data will be deleted for each counter
-for (i in counters) badweeks[[i]] <- unique(Arl_MUT_Combined$Week[Arl_MUT_Combined$DeleteMe == TRUE 
-                                                                  & Arl_MUT_Combined$CounterID == i])
+for (i in counters) badweeks[[i]] <- unique(Arl_MUT_Combined$Week[Arl_MUT_Combined$DeleteMe == TRUE &
+                                                                   Arl_MUT_Combined$CounterID == i])
 #mark the other data in those weeks for each counter
 for (i in counters) Arl_MUT_Combined$SkipWeek[Arl_MUT_Combined$CounterID == i & 
                                                 Arl_MUT_Combined$Week %in% badweeks[[i]]] <- TRUE
@@ -161,5 +162,5 @@ Averagedays_long <- melt(as.data.frame(lapply(Averagedays,as.vector)), measure.v
 Averagedays_long$Mode <- ifelse(grepl("Ped",Averagedays_long$variable),"Ped","Bike")
 Averagedays_long$Dir <- ifelse(grepl("IN",Averagedays_long$variable),"In","Out")
 
-write.csv(Averagedays_long, "Averagedays_Melt.csv")
-save(Averagedays_long, file="Averagedays_Melt.Rda")
+write.csv(Averagedays_long, "Averagedays_long.csv")
+save(Averagedays_long, file="Averagedays_long.Rda")
