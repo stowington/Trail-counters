@@ -11,16 +11,42 @@ library(data.table)
 
 
 downloadCounterXMLtoDF <- function(url) {
-  doc <- xmlTreeParse(url, useInternal=T)
+  
+  doc <- try(xmlTreeParse(url, useInternal=T)) #downloads sometimes fail, we want to keep going with the rest
+  if(inherits(doc,"try-error")) { 
+    print("Download failed on url ", url)
+    #return empty data frame to keep batch downloads running
+    return(data.frame(count=character(),
+                      date=character(),
+                      direction=character(),
+                      hour=character(),
+                      minute=character(),
+                      mode=character(),
+                      stringsAsFactors = FALSE))
+  }
   top <- xmlRoot(doc)
-  df <- data.frame(matrix(unlist(xmlApply(top, xmlAttrs)), ncol=6, byrow=T),stringsAsFactors = F)
+  df <- try(data.frame(matrix(unlist(xmlApply(top, xmlAttrs)), ncol=6, byrow=T),stringsAsFactors = F))
+  if(inherits(df,"try-error")) { 
+    print("Parse failed on url ", url)
+    #return empty data frame to keep batch downloads running
+    return(data.frame(count=character(),
+                      date=character(),
+                      direction=character(),
+                      hour=character(),
+                      minute=character(),
+                      mode=character(),
+                      stringsAsFactors = FALSE))
+  }
   names(df) <- c('count','date','direction', 'hour','minute','mode')
   
   #add counter id from the URL
   r <- "&counterid=(\\d+)" 
   df$counter_num <- str_match(url,r)[[2]]
+  print(paste("Downloaded counter:",df$counter_num[1],"direction:",df$direction[1],"mode:",df$mode[1],sep=" "))
   
+#  Sys.sleep(300) # wait 5 minutes so as not to overload the server with repeated requests
   return(df)
+
 }
 
 # df_test8 <- downloadCounterXMLtoDF('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=30&method=GetCountInDateRange&startDate=1/1/2009&endDate=10/31/2014&direction=I&mode=P&startTime=0:00&endTime=23:59&interval=m')
@@ -42,15 +68,17 @@ downloadcounterinfo <-function() {
 counters <- downloadcounterinfo()
 
 # Which counters do we want? For now, only trails in Arlington
-# WARNING! THESE NUMBERS DO NOT ALIGN WITH THE DATA SET SENT BY DAVID PATTON
+# WARNING! THESE NUMBERS DO NOT ALIGN WITH THE DATA SET SENT IN 2012 BY DAVID PATTON
 countersofinterest <- c(1,2,3,4,5,6,9,11,12,23,24,25,28,30,31,32,33,34,36,37,38,39,41,42)
+# dates for study: 1/1/2009 - 6/3/2016
+datesofinterest <- c("1/1/2009","6/3/2016")
 
 # Assemble all the query URLs for the webserver
 factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
-counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=1/1/2009&endDate=06/03/2016&direction=',factors$direction,'&mode=',factors$mode,'&startTime=0:00&endTime=23:59&interval=m')
+counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
 
 #  now use lapply with our custom download function to do the downloading/prep on the counter_urls
-incomingdata <- lapply(counter_urls[1:2],downloadCounterXMLtoDF)
+incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
 #testdf <- downloadCounterXMLtoDF(counter_urls[1]) #worked
 
 # Merge merge merge
@@ -58,7 +86,7 @@ combineddata <- rbindlist(incomingdata)
 
 setwd("~/Dropbox/VT coursework/Capstone/Counter data")
 #### save R file
-# save(combineddata, file="Arl_Webdata_Combined.Rda")
+ save(combineddata, file="Arl_Webdata_Combined.Rda")
 
 
 ##### save CSV in shared dir
