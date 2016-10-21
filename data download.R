@@ -14,7 +14,7 @@ downloadCounterXMLtoDF <- function(url) {
   
   doc <- try(xmlTreeParse(url, useInternal=T)) #downloads sometimes fail, we want to keep going with the rest
   if(inherits(doc,"try-error")) { 
-    print("Download failed on url ", url)
+    print(paste("Download failed on url ", url))
     #return empty data frame to keep batch downloads running
     return(data.frame(count=character(),
                       date=character(),
@@ -27,7 +27,7 @@ downloadCounterXMLtoDF <- function(url) {
   top <- xmlRoot(doc)
   df <- try(data.frame(matrix(unlist(xmlApply(top, xmlAttrs)), ncol=6, byrow=T),stringsAsFactors = F))
   if(inherits(df,"try-error")) { 
-    print("Parse failed on url ", url)
+    print(paste("Parse failed on url ", url))
     #return empty data frame to keep batch downloads running
     return(data.frame(count=character(),
                       date=character(),
@@ -44,7 +44,7 @@ downloadCounterXMLtoDF <- function(url) {
   df$counter_num <- str_match(url,r)[[2]]
   print(paste("Downloaded counter:",df$counter_num[1],"direction:",df$direction[1],"mode:",df$mode[1],sep=" "))
   
-#  Sys.sleep(300) # wait 5 minutes so as not to overload the server with repeated requests
+  Sys.sleep(300) # wait 5 minutes since the server seems to choke with rapid large requests
   return(df)
 
 }
@@ -69,13 +69,15 @@ counters <- downloadcounterinfo()
 
 # Which counters do we want? For now, only trails in Arlington
 # WARNING! THESE NUMBERS DO NOT ALIGN WITH THE DATA SET SENT IN 2012 BY DAVID PATTON
-countersofinterest <- c(1,2,3,4,5,6,9,11,12,23,24,25,28,30,31,32,33,34,36,37,38,39,41,42)
+countersofinterest <- c(1,2,3,4,5,6,9,11,12,23,24,25,28,30,31,32,33,34,36,37,38,39,41,42,45,47,48)
 # dates for study: 1/1/2009 - 6/3/2016
 datesofinterest <- c("1/1/2009","6/3/2016")
 
 # Assemble all the query URLs for the webserver
+## HARD WAY with different factors
 factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
 counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+#counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',countersofinterest,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&interval=m')
 
 #  now use lapply with our custom download function to do the downloading/prep on the counter_urls
 incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
