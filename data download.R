@@ -22,6 +22,7 @@ downloadCounterXMLtoDF <- function(url) {
                       hour=character(),
                       minute=character(),
                       mode=character(),
+                      counter_num=character(),
                       stringsAsFactors = FALSE))
   }
   top <- xmlRoot(doc)
@@ -35,6 +36,7 @@ downloadCounterXMLtoDF <- function(url) {
                       hour=character(),
                       minute=character(),
                       mode=character(),
+                      counter_num=character(),
                       stringsAsFactors = FALSE))
   }
   names(df) <- c('count','date','direction', 'hour','minute','mode')
@@ -71,25 +73,121 @@ counters <- downloadcounterinfo()
 # WARNING! THESE NUMBERS DO NOT ALIGN WITH THE DATA SET SENT IN 2012 BY DAVID PATTON
 countersofinterest <- c(1,2,3,4,5,6,9,11,12,23,24,25,28,30,31,32,33,34,36,37,38,39,41,42,45,47,48)
 # dates for study: 1/1/2009 - 6/3/2016
-datesofinterest <- c("1/1/2009","6/3/2016")
+datesofinterest <- c("1/1/2010","6/30/2010")
 
 # Assemble all the query URLs for the webserver
 ## HARD WAY with different factors
-factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
-counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+#factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
+#counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
 #counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',countersofinterest,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&interval=m')
 
 #  now use lapply with our custom download function to do the downloading/prep on the counter_urls
-incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
+#incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
 #testdf <- downloadCounterXMLtoDF(counter_urls[1]) #worked
 
 # Merge merge merge
-combineddata <- rbindlist(incomingdata)
+
+## HARDEST WAY download in date range chunks so as not to overload the server
+piecemealdata <- list()
+
+datesofinterest <- c("1/1/2009","6/30/2009")
+factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
+counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
+piecemealdata[["09a"]] <- rbindlist(incomingdata)
+
+datesofinterest <- c("7/1/2009","12/31/2009")
+factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
+counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
+piecemealdata[["09b"]] <- rbindlist(incomingdata)
+
+datesofinterest <- c("1/1/2010","6/30/2010")
+factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
+counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
+piecemealdata[["10a"]] <- rbindlist(incomingdata)
+
+datesofinterest <- c("7/1/2010","12/31/2010")
+factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
+counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
+piecemealdata[["10b"]] <- rbindlist(incomingdata)
+
+datesofinterest <- c("1/1/2011","6/30/2011")
+factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
+counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
+piecemealdata[["11a"]] <- rbindlist(incomingdata)
+
+datesofinterest <- c("7/1/2011","12/31/2011")
+factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
+counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
+piecemealdata[["11b"]] <- rbindlist(incomingdata)
+
+datesofinterest <- c("1/1/2012","6/30/2012")
+factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
+counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
+piecemealdata[["12a"]] <- rbindlist(incomingdata)
+
+datesofinterest <- c("7/1/2012","12/31/2012")
+factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
+counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
+piecemealdata[["12b"]] <- rbindlist(incomingdata)
+
+datesofinterest <- c("1/1/2013","6/30/2013")
+factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
+counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
+piecemealdata[["13a"]] <- rbindlist(incomingdata)
+
+datesofinterest <- c("7/1/2013","12/31/2013")
+factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
+counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
+piecemealdata[["13b"]] <- rbindlist(incomingdata)
+
+datesofinterest <- c("1/1/2014","6/30/2014")
+factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
+counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
+piecemealdata[["14a"]] <- rbindlist(incomingdata)
+
+datesofinterest <- c("7/1/2014","12/31/2014")
+factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
+counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
+piecemealdata[["14b"]] <- rbindlist(incomingdata)
+
+datesofinterest <- c("1/1/2015","6/30/2015")
+factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
+counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
+piecemealdata[["15a"]] <- rbindlist(incomingdata)
+
+datesofinterest <- c("7/1/2015","12/31/2015")
+factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
+counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
+piecemealdata[["15b"]] <- rbindlist(incomingdata)
+
+datesofinterest <- c("1/1/2016","6/03/2016")
+factors <- expand.grid(counterid = countersofinterest, direction = c("I","O"), mode = c("P","B"))
+counter_urls <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m')
+incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF)
+piecemealdata[["16a"]] <- rbindlist(incomingdata)
+
+combineddata <- rbindlist(piecemealdata)
 
 setwd("~/Dropbox/VT coursework/Capstone/Counter data")
 #### save R file
- save(combineddata, file="Arl_Webdata_Combined.Rda")
+save(combineddata, file="Arl_Webdata_Combined.Rda")
 
+ ## Clean up
+ rm(list=c("incomingdata","piecemealdata"))
 
 ##### save CSV in shared dir
 # setwd("~/Dropbox/Processed Counter Data & R code/") # Dir on John's computer
