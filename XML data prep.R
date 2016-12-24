@@ -16,7 +16,7 @@ holidays <- read.csv("Holidays.csv")
 setwd("~/Dropbox/VT coursework/Capstone/Analysis")
 
 #Transform the count vector from charactar to integer
-combineddata$count <- type.convert(combineddata$count,as.is = TRUE) #as.is = TRUE prevents it becoming a factor variable, which shouldn't happen anyway
+if(is.character(combineddata$count)) combineddata$count <- type.convert(combineddata$count,as.is = TRUE) #as.is = TRUE prevents it becoming a factor variable, which shouldn't happen anyway
 
 #now to set the dates to something understood as that in R, using Chron, lubridate (ugh) etc..
 combineddata$date <- as.Date(combineddata$date,format="%m/%d/%Y")
@@ -44,6 +44,10 @@ combineddata$Week <- week(combineddata$date)
 combineddata$Month <- months(combineddata$date)
 combineddata$Quarter <- quarters(combineddata$date)
 combineddata$Year <- year(combineddata$date)
+
+#For text variables in the above, sorting will default to alphabetical. Let's fix that by converting to factors.
+combineddata$Day <- factor(combineddata$Day, levels=c("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"))
+combineddata$Month <- factor(combineddata$Month, levels=c("January","February","March","April","May","June","July","August","September","October","November","December"))
 
 # time for cleanup, dump data we can tell is bad
 # no deletions yet, how many rows do we have?
@@ -124,8 +128,8 @@ combineddata_Cleaned$Workday <- ifelse(combineddata_Cleaned$Weekend | combinedda
 ######## MARK ROWS WITH TEXT LABEL FOR DIRECTION/MODE - looks like we need it in one variable for graphing ########
 combineddata_Cleaned$dir_mode[combineddata_Cleaned$direction == "I"] <- "inbound"
 combineddata_Cleaned$dir_mode[combineddata_Cleaned$direction == "O"] <- "outbound"
-combineddata_Cleaned$dir_mode[combineddata_Cleaned$mode == "B"] <- paste(combineddata_Cleaned$dir_mode, "bicycle",sep = " ")
-combineddata_Cleaned$dir_mode[combineddata_Cleaned$mode == "P"] <- paste(combineddata_Cleaned$dir_mode, "pedestrian",sep = " ")
+combineddata_Cleaned$dir_mode[combineddata_Cleaned$mode == "B"] <- paste(combineddata_Cleaned$dir_mode[combineddata_Cleaned$mode == "B"], "bicycle",sep = " ")
+combineddata_Cleaned$dir_mode[combineddata_Cleaned$mode == "P"] <- paste(combineddata_Cleaned$dir_mode[combineddata_Cleaned$mode == "P"], "pedestrian",sep = " ")
 
 #working directory sanity check, should already be set from above
 setwd("~/Dropbox/VT coursework/Capstone/Analysis")
@@ -140,6 +144,25 @@ Averagedays <- aggregate(cbind(count)
 
 
 save(Averagedays, file="Averagedays.Rda")
+
+# get the average time course, by year, at each location for weekdays vs. weekends vs. holidays vs. OPM closures
+Averagedays_year <- aggregate(cbind(count)
+                         ~ time+time.text+direction+mode+dir_mode+counter_num+Weekend+Workday+Holiday+Likely.abnormal+OPM.action+Year,
+                         data=combineddata_Cleaned,mean,na.action = na.pass
+)
+
+
+save(Averagedays_year, file="Averagedays_year.Rda")
+
+
+# get the average time course, by month and year, at each location for weekdays vs. weekends vs. holidays vs. OPM closures
+Averagedays_monthyear <- aggregate(cbind(count)
+                              ~ time+time.text+direction+mode+dir_mode+counter_num+Weekend+Workday+Holiday+Likely.abnormal+OPM.action+Month+Year,
+                              data=combineddata_Cleaned,mean,na.action = na.pass
+)
+
+
+save(Averagedays_monthyear, file="Averagedays_monthyear.Rda")
 
 
 # aggregate over periods of the day, using rush periods as defined by WMATA bike restrictions
