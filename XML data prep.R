@@ -5,6 +5,7 @@ library(zoo)
 library(reshape2)
 library(ggplot2)
 library(lattice)
+library(stringi)
 
 setwd("~/Dropbox/VT coursework/Capstone/Counter data") # Data dir on John's computer
 # load("Arl_Webdata_Combined.Rda") # loaded data frame is called combineddata
@@ -44,6 +45,7 @@ combineddata$Week <- week(combineddata$date)
 combineddata$Month <- months(combineddata$date)
 combineddata$Quarter <- quarters(combineddata$date)
 combineddata$Year <- year(combineddata$date)
+combineddata$mweek <- as.integer(stri_datetime_format(combineddata$date, format = "W")) # week of the month (for plotting as a calendar)
 
 #For text variables in the above, sorting will default to alphabetical. Let's fix that by converting to factors.
 combineddata$Day <- factor(combineddata$Day, levels=c("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"))

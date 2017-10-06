@@ -6,6 +6,7 @@ library(reshape2)
 library(ggplot2)
 library(lattice)
 library(grid)
+library(stringi) # for week of month
 
 # Working in GMT to avoid having the labels shifted by 5 hours!
 Sys.setenv(TZ='GMT')
@@ -139,6 +140,11 @@ p +
   facet_grid(Month ~ Year) + scale_colour_brewer(palette = "Set1") + theme(plot.margin = unit(rep(3,4),"mm")) + coord_cartesian(ylim=c(0,25))
 ggsave("Counter 24 month year weekend.pdf",width = 8.5,height = 11, units = "in")
 
+
+###########
+# Month/year grids for all counters, saved as individual files
+###########
+
 monthlyweekdays <- function(counternum) {
   p <- ggplot(Averagedays_monthyear[Averagedays_monthyear$Workday & 
                                       !Averagedays_monthyear$Likely.abnormal & 
@@ -155,6 +161,75 @@ monthlyweekdays <- function(counternum) {
 }
 
 lapply(unique(Averagedays_monthyear$counter_num),monthlyweekdays)
+
+# investigating potentially screwy data by examining a few graphs more closely:
+
+
+yearmonthcountercheckaverage <- function(yearnum,monthname,counternum) {
+  p <- ggplot(Averagedays_monthyear[(Averagedays_monthyear$Workday | Averagedays_monthyear$Weekend) &
+                                      !Averagedays_monthyear$Likely.abnormal & 
+                                      !Averagedays_monthyear$OPM.action &
+                                      Averagedays_monthyear$Year == yearnum &
+                                      Averagedays_monthyear$Month == monthname &
+                                      Averagedays_monthyear$counter_num == counternum,],
+              aes(x = time, y = count, color = dir_mode)) + 
+    geom_line() + 
+    scale_x_chron(format="%H:%M",n=8, minor_breaks=seq(0,1,1/24))
+  p + 
+    ggtitle(paste0("Average workday traffic for\nCounter ",counternum,": ", counters[counters$counter_num == counternum,]$name, " ", monthname, " ", yearnum)) + 
+     facet_grid(Workday ~ .) + scale_colour_brewer(palette = "Set1") + theme(plot.margin = unit(rep(3,4),"mm")) 
+ # ggsave(paste0("Data check ", yearnum, " ", monthname, " Counter ", counternum, " Weekday.pdf"),width = 8.5,height = 11, units = "in")
+  
+}
+yearmonthcountercheckaverage(2015,"April",45)
+
+#labels for the calendar based grids that follow
+dates_in_data <- unique(subset(combineddata_Cleaned,select=c("date","Day","Week","Month","Quarter","Year","mweek")))
+dates_in_data$daynum <- as.character(mday(dates_in_data$date))
+dates_in_data$mweek <- as.integer(stri_datetime_format(dates_in_data$date, format = "W"))
+#dummy entries to fill in the rest of the calendar grid
+dates_in_data2 <- with(dates_in_data, expand.grid(Day = levels(Day), Month = levels(Month), mweek = levels(as.factor(mweek)), Year = levels(as.factor(Year)))) 
+#dates_in_data2 <- ddply(dates_in_data, .(Day,Month,Year,mweek), numcolwise(function(x) {if(length(x)>0) x else NA}), .drop=F) # alternative, requires dplyr
+dates_in_data3 <- merge(dates_in_data,dates_in_data2,all = TRUE)
+dates_in_data3$filler <- is.na(dates_in_data3$daynum) #mark rows with missing date information as filler
+dates_in_data3$daynum[is.na(dates_in_data3$daynum)] <- "" #then convert them to empty strings so they don't get deleted when labeling
+deletions <- aggregate(filler ~ Year + Month + mweek, data = dates_in_data3, sum) #count fillers in each year, month, week combination
+deletions <- rename(deletions,c("filler"="extras"))
+dates_in_data3 <- merge(dates_in_data3,deletions,all = TRUE) #attach the counts back to the main list
+dates_in_data3 <- dates_in_data3[dates_in_data3$extras < 7,] # if a week has seven NA values, we don't need it to label plots (avoiding some warnings)
+#dates_in_data3 <- dates_in_data3[order(dates_in_data3$Year,dates_in_data3$Month,dates_in_data3$mweek,dates_in_data3$Day),] #sort the labels before graphing to ensure the labels will be in order
+
+yearmonthcountercheckraw <- function(yearnum,monthname,counternum) {
+  plotdata <- combineddata_Cleaned[combineddata_Cleaned$Year == yearnum &
+                                     combineddata_Cleaned$Month == monthname &
+                                     combineddata_Cleaned$counter_num == counternum,]
+  labeldata <- subset(dates_in_data3, Year == yearnum & Month == monthname)
+  p <- ggplot(plotdata,
+              aes(x = time, y = count, group = dir_mode)) + 
+    geom_line(aes(color = dir_mode)) + 
+    scale_x_chron(format="%H:%M",n=8, minor_breaks=seq(0,1,1/24))
+  p + 
+    ggtitle(paste0("Average workday traffic for\nCounter ",counternum,": ", counters[counters$counter_num == counternum,]$name, " ", monthname, " ", yearnum)) + 
+    facet_grid(mweek ~ Day) + 
+    scale_colour_brewer(palette = "Set1") + 
+    theme(plot.margin = unit(rep(3,4),"mm"))  +  
+    geom_text(aes(x=.25,y=500, label=daynum, group=NULL), data=labeldata) #label each facet with the day
+  
+   ggsave(paste0("Data check ", yearnum, " ", monthname, " Counter ", counternum, " Daily.pdf"),width = 11,height = 8.5, units = "in")
+  
+}
+
+
+further_investigation_table <- c(
+  c(2015,"April",45)
+)
+colnames(further_investigation_table) <- c("Year","Month","counter_num")
+
+previouspath <- getwd()
+setwd("~/Dropbox/VT coursework/Capstone/Analysis/Datacheck")
+mapply(yearmonthcountercheckraw,further_investigation_table$Year,further_investigation_table$Month,further_investigation_table$counter_num)
+
+setwd(previouspath)
 
 ####BROKEN BELOW HERE
 
