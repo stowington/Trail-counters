@@ -187,23 +187,26 @@ yearmonthcountercheckaverage(2015,"April",45)
 dates_in_data <- unique(subset(combineddata_Cleaned,select=c("date","Day","Week","Month","Quarter","Year","mweek")))
 dates_in_data$daynum <- as.character(mday(dates_in_data$date))
 dates_in_data$mweek <- as.integer(stri_datetime_format(dates_in_data$date, format = "W"))
-#dummy entries to fill in the rest of the calendar grid
-dates_in_data2 <- with(dates_in_data, expand.grid(Day = levels(Day), Month = levels(Month), mweek = levels(as.factor(mweek)), Year = levels(as.factor(Year)))) 
-#dates_in_data2 <- ddply(dates_in_data, .(Day,Month,Year,mweek), numcolwise(function(x) {if(length(x)>0) x else NA}), .drop=F) # alternative, requires dplyr
-dates_in_data3 <- merge(dates_in_data,dates_in_data2,all = TRUE)
-dates_in_data3$filler <- is.na(dates_in_data3$daynum) #mark rows with missing date information as filler
-dates_in_data3$daynum[is.na(dates_in_data3$daynum)] <- "" #then convert them to empty strings so they don't get deleted when labeling
-deletions <- aggregate(filler ~ Year + Month + mweek, data = dates_in_data3, sum) #count fillers in each year, month, week combination
-deletions <- rename(deletions,c("filler"="extras"))
-dates_in_data3 <- merge(dates_in_data3,deletions,all = TRUE) #attach the counts back to the main list
-dates_in_data3 <- dates_in_data3[dates_in_data3$extras < 7,] # if a week has seven NA values, we don't need it to label plots (avoiding some warnings)
-#dates_in_data3 <- dates_in_data3[order(dates_in_data3$Year,dates_in_data3$Month,dates_in_data3$mweek,dates_in_data3$Day),] #sort the labels before graphing to ensure the labels will be in order
+
+# Turns out I didn't need all this.
+# #dummy entries to fill in the rest of the calendar grid.
+# dates_in_data2 <- with(dates_in_data, expand.grid(Day = levels(Day), Month = levels(Month), mweek = levels(as.factor(mweek)), Year = levels(as.factor(Year)))) 
+# #dates_in_data2 <- ddply(dates_in_data, .(Day,Month,Year,mweek), numcolwise(function(x) {if(length(x)>0) x else NA}), .drop=F) # alternative, requires dplyr
+# dates_in_data3 <- merge(dates_in_data,dates_in_data2,all = TRUE)
+# dates_in_data3$filler <- is.na(dates_in_data3$daynum) #mark rows with missing date information as filler
+# dates_in_data3$daynum[is.na(dates_in_data3$daynum)] <- "" #then convert them to empty strings so they don't get deleted when labeling
+# deletions <- aggregate(filler ~ Year + Month + mweek, data = dates_in_data3, sum) #count fillers in each year, month, week combination
+# deletions <- rename(deletions,c("filler"="extras"))
+# dates_in_data3 <- merge(dates_in_data3,deletions,all = TRUE) #attach the counts back to the main list
+# dates_in_data3 <- dates_in_data3[dates_in_data3$extras < 7,] # if a week has seven NA values, we don't need it to label plots (avoiding some warnings)
+# #dates_in_data3 <- dates_in_data3[order(dates_in_data3$Year,dates_in_data3$Month,dates_in_data3$mweek,dates_in_data3$Day),] #sort the labels before graphing to ensure the labels will be in order
 
 yearmonthcountercheckraw <- function(yearnum,monthname,counternum) {
   plotdata <- combineddata_Cleaned[combineddata_Cleaned$Year == yearnum &
                                      combineddata_Cleaned$Month == monthname &
                                      combineddata_Cleaned$counter_num == counternum,]
-  labeldata <- subset(dates_in_data3, Year == yearnum & Month == monthname)
+  labeldata <- subset(dates_in_data, Year == yearnum & Month == monthname)
+  max_y <- max(plotdata$count)
   p <- ggplot(plotdata,
               aes(x = time, y = count, group = dir_mode)) + 
     geom_line(aes(color = dir_mode)) + 
@@ -213,21 +216,19 @@ yearmonthcountercheckraw <- function(yearnum,monthname,counternum) {
     facet_grid(mweek ~ Day) + 
     scale_colour_brewer(palette = "Set1") + 
     theme(plot.margin = unit(rep(3,4),"mm"))  +  
-    geom_text(aes(x=.25,y=500, label=daynum, group=NULL), data=labeldata) #label each facet with the day
+    geom_text(aes(x=.25,y=max_y * 0.75, label=daynum, group=NULL), data=labeldata) #label each facet with the day
   
-   ggsave(paste0("Data check ", yearnum, " ", monthname, " Counter ", counternum, " Daily.pdf"),width = 11,height = 8.5, units = "in")
+  # ggsave(paste0("Data check ", yearnum, " ", monthname, " Counter ", counternum, " Daily.pdf"),width = 11,height = 8.5, units = "in")
   
 }
 
+#yearmonthcountercheckraw(2015,"April",45) #test
 
-further_investigation_table <- c(
-  c(2015,"April",45)
-)
-colnames(further_investigation_table) <- c("Year","Month","counter_num")
+further_investigation_table <- read.csv("further investigation list.csv")
 
 previouspath <- getwd()
-setwd("~/Dropbox/VT coursework/Capstone/Analysis/Datacheck")
-mapply(yearmonthcountercheckraw,further_investigation_table$Year,further_investigation_table$Month,further_investigation_table$counter_num)
+setwd("~/Dropbox/VT coursework/Capstone/Analysis/Plots/Datacheck")
+apply(further_investigation_table,1,function(params)yearmonthcountercheckraw(params[1],params[2],params[3]))
 
 setwd(previouspath)
 

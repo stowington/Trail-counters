@@ -90,7 +90,7 @@ firstDays <- aggregate(date ~ counter_num, data= combineddata[!is.na(combineddat
 combineddata$YearWeek <- paste(combineddata$Year,combineddata$Week, sep = ".")
 for (i in countersindata) badweeks[[i]] <- unique(combineddata$YearWeek[combineddata$DeleteMe == TRUE &
                                                                     combineddata$counter_num == i])
-#mark the other data in those weeks for each counter
+#mark the other data in those weeks for each counter, in case we decide to dump it later
 for (i in countersindata) combineddata$SkipWeek[combineddata$counter_num == i & 
                                                 combineddata$YearWeek %in% badweeks[[i]]] <- TRUE
 #how much data are we deleting?
