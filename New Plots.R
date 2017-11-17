@@ -1,7 +1,8 @@
 library(chron)
 library(lubridate)
 library(plyr)
-library(zoo)
+library(dplyr) #for piping, summary stats
+library(zoo) 
 library(reshape2)
 library(ggplot2)
 library(lattice)
@@ -231,6 +232,25 @@ setwd("~/Dropbox/VT coursework/Capstone/Analysis/Plots/Datacheck")
 apply(further_investigation_table,1,function(params)yearmonthcountercheckraw(params[1],params[2],params[3]))
 
 setwd(previouspath)
+
+
+##### summary statistics for paper
+##### 
+
+summary <- combineddata_Cleaned %>%
+  group_by(counter_num,Weekend,Workday) %>%
+  summarise(n_obs = n(), days = n_distinct(date) )
+summary$daytype <- "other"
+summary$daytype[summary$Workday] <- "Workday"
+summary$daytype[summary$Weekend] <- "Weekend"
+summary_n <- dcast(summary,counter_num ~ daytype,sum,value.var = "n_obs", margins = TRUE)
+summary_days <- dcast(summary,counter_num ~ daytype,sum,value.var = "days", margins = TRUE)
+
+summary2015 <- combineddata_Cleaned %>%
+  filter(Year == 2015 & (Weekend | Workday)) %>%
+  group_by(counter_num,direction,mode,dir_mode,Weekend,Workday) %>%
+  summarise(num = n()/96, count = sum(count),average = sum(count)/n() )
+
 
 ####BROKEN BELOW HERE
 

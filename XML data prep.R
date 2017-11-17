@@ -9,6 +9,7 @@ library(stringi)
 
 setwd("~/Dropbox/VT coursework/Capstone/Counter data") # Data dir on John's computer
 # load("Arl_Webdata_Combined.Rda") # loaded data frame is called combineddata
+# load("counters.Rda") # loaded data frame is called counters
 
 #import manually constructed CSV with holidays and other dates of concern
 holidays <- read.csv("Holidays.csv")
@@ -48,8 +49,11 @@ combineddata$Year <- year(combineddata$date)
 combineddata$mweek <- as.integer(stri_datetime_format(combineddata$date, format = "W")) # week of the month (for plotting as a calendar)
 
 #For text variables in the above, sorting will default to alphabetical. Let's fix that by converting to factors.
-combineddata$Day <- factor(combineddata$Day, levels=c("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"))
-combineddata$Month <- factor(combineddata$Month, levels=c("January","February","March","April","May","June","July","August","September","October","November","December"))
+combineddata$Day <- factor(combineddata$Day, levels=c("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"),ordered = TRUE)
+combineddata$Month <- factor(combineddata$Month, levels=c("January","February","March","April","May","June","July","August","September","October","November","December"), ordered = TRUE)
+combineddata$counter_num <- factor(combineddata$counter_num, levels = c(1:max(as.integer(counters$counter_num))),ordered = TRUE) # defining the levels as all of the possible integer assignments to avoid potentially confusing mismatches
+combineddata$direction <- factor(combineddata$direction)
+combineddata$mode <- factor(combineddata$mode)
 
 # time for cleanup, dump data we can tell is bad
 # no deletions yet, how many rows do we have?
@@ -83,8 +87,10 @@ for (i in countersindata) combineddata$DeleteMe[combineddata$counter_num == i &
 for (i in countersindata) combineddata$DeleteMe[combineddata$counter_num == i & 
                                                 combineddata$date == min(combineddata$date[
                                                   combineddata$counter_num == i])]<- TRUE
-#what are those first days? It will be useful for the report
+#what are those first days? It will be useful for the report and for checking integrity of the download
 firstDays <- aggregate(date ~ counter_num, data= combineddata[!is.na(combineddata$count),],min)
+counters <- merge(counters,firstDays)
+names(counters)[names(counters) == "date"] <- "min_date_data"
 
 #find weeks where data will be deleted for each counter
 combineddata$YearWeek <- paste(combineddata$Year,combineddata$Week, sep = ".")
@@ -132,6 +138,9 @@ combineddata_Cleaned$dir_mode[combineddata_Cleaned$direction == "I"] <- "inbound
 combineddata_Cleaned$dir_mode[combineddata_Cleaned$direction == "O"] <- "outbound"
 combineddata_Cleaned$dir_mode[combineddata_Cleaned$mode == "B"] <- paste(combineddata_Cleaned$dir_mode[combineddata_Cleaned$mode == "B"], "bicycle",sep = " ")
 combineddata_Cleaned$dir_mode[combineddata_Cleaned$mode == "P"] <- paste(combineddata_Cleaned$dir_mode[combineddata_Cleaned$mode == "P"], "pedestrian",sep = " ")
+# This should be a factor, and let's specify the levels in order so that bikes and peds are grouped together in tables and graphs
+combineddata_Cleaned$dir_mode <- factor(combineddata_Cleaned$dir_mode, levels = c("inbound bicycle","outbound bicycle","inbound pedestrian","outbound pedestrian"))
+
 
 #working directory sanity check, should already be set from above
 setwd("~/Dropbox/VT coursework/Capstone/Analysis")
