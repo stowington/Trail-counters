@@ -8,7 +8,7 @@ library(lattice)
 library(stringi)
 
 setwd("~/Dropbox/VT coursework/Capstone/Counter data") # Data dir on John's computer
-# load("Arl_Webdata_Combined.Rda") # loaded data frame is called combineddata
+ load("Arl_Webdata_Combined_newattempt.Rda") # loaded data frame is called combineddata
 # load("counters.Rda") # loaded data frame is called counters
 
 #import manually constructed CSV with holidays and other dates of concern

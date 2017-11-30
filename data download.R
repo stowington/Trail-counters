@@ -10,12 +10,13 @@ library(lubridate) # for date checking
 #df <- data.frame(matrix(unlist(xmlApply(top, xmlAttrs)), ncol=4, byrow=T),stringsAsFactors = F)
 #names(df) <- c('count','date','direction', 'type')
 
-
+failed_urls <- c()
 downloadCounterXMLtoDF <- function(url,sleep = 300) {
   
   doc <- try(xmlTreeParse(url, useInternal=T)) #downloads sometimes fail, we want to keep going with the rest
   if(inherits(doc,"try-error")) { 
     print(paste("Download failed on url ", url))
+    failed_urls <<- append(failed_urls,url)
     #return empty data frame to keep batch downloads running
     return(data.frame(count=character(),
                       date=character(),
@@ -30,6 +31,7 @@ downloadCounterXMLtoDF <- function(url,sleep = 300) {
   df <- try(data.frame(matrix(unlist(xmlApply(top, xmlAttrs)), ncol=6, byrow=T),stringsAsFactors = F))
   if(inherits(df,"try-error")) { 
     print(paste("Parse failed on url ", url))
+    failed_urls <<- append(failed_urls,url)
     #return empty data frame to keep batch downloads running
     return(data.frame(count=character(),
                       date=character(),
@@ -210,7 +212,7 @@ datesofinterest <- c("1/1/2010","6/30/2010")
 
 ##  MORE COMPACT VERSION, easier to adjust date ranges and intervals
 startdate <- min(counters$min_date_web[counters$counter_num %in% countersofinterest]) # earliest start date of the counters we care about
-enddate <- mdy("6/03/2016") # for paper: "6/03/2016"
+enddate <- mdy("6/04/2016") # for paper: "6/03/2016" but code below subtracts a day so use 6/4
 intermediate_dates <- c(seq(startdate,enddate,by = "6 months"),enddate) #adjust interval if necessary
 counter_urls <- c() #initialize list of request URLs
 for (i in 1:(length(intermediate_dates)-1)) {
@@ -221,15 +223,24 @@ for (i in 1:(length(intermediate_dates)-1)) {
   
   factors <- expand.grid(counterid = activecounters, direction = c("I","O"), mode = c("P","B"))
   counter_urls <- append(counter_urls,paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m'))
-  print(paste("i =",i,"activecounters =",paste(activecounters,collapse = ", ")))
+ # print(paste("i =",i,"activecounters =",paste(activecounters,collapse = ", ")))
 }
-incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF, sleep = 180)
-combineddatatest <- rbindlist(incomingdata)
+
+# library(future)
+# plan(multiprocess)
+# downloadCounterXMLtoSingleDF <- function(urls,sleep = 300) {
+#   incomingdata <- future_lapply(urls,downloadCounterXMLtoDF, sleep)
+#   rbindlist(incomingdata)
+# }
+# combineddata <- downloadCounterXMLtoSingleDF(test_urls, sleep = 180)
+
+system.time({incomingdata <- lapply(counter_urls,downloadCounterXMLtoDF, sleep = 0)
+combineddata <- rbindlist(incomingdata)})
 
 setwd("~/Dropbox/VT coursework/Capstone/Counter data")
 #### save R file
-save(combineddata, file="Arl_Webdata_Combined.Rda")
-save(counters, file="counters.Rda")
+# save(combineddata, file="Arl_Webdata_Combined.Rda")
+# save(counters, file="counters.Rda")
 
  ## Clean up large temp variables
  rm(list=c("incomingdata","piecemealdata"))
