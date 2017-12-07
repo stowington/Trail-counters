@@ -89,7 +89,7 @@ downloadcounterinfo <-function() {
 
 # grab counter info (names, coordinates)
 counters <- downloadcounterinfo()
-# add min dates for each counter
+# add min dates for each counter - useful for double-checking the data later
 incomingdata <- lapply(counters$counter_num,downloadCounterMinDatestoDF)
 counters <- merge(counters,rbindlist(incomingdata))
 counters$min_date_web <- mdy(counters$min_date_web)
@@ -97,7 +97,8 @@ counters$min_date_web <- mdy(counters$min_date_web)
 
 # Which counters do we want? For now, only trails in Arlington
 # WARNING! THESE NUMBERS DO NOT ALIGN WITH THE DATA SET SENT IN 2012 BY DAVID PATTON
-countersofinterest <- c(1,2,3,5,9,11,12,23,24,25,28,30,31,32,33,34,36,37,38,39,41,42,45,47,48) # 11/16/17: removed counter 4 (no direction information) and counter 6 (no mode information)
+# # 11/16/17: removed counter 4 (no direction information) and counter 6 (no mode information)
+countersofinterest <- c(1,2,3,5,9,11,12,23,24,25,28,30,31,32,33,34,36,37,38,39,41,42,45,47,48) 
 
 
 # dates for study: 1/1/2009 - 6/3/2016

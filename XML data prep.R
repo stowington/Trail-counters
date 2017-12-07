@@ -14,6 +14,34 @@ setwd("~/Dropbox/VT coursework/Capstone/Counter data") # Data dir on John's comp
 #import manually constructed CSV with holidays and other dates of concern
 holidays <- read.csv("Holidays.csv")
 
+#The website's trail information is incomplete
+#first, define factor levels to avoid potential mismatches and improve sorting
+counters$counter_num <- factor(counters$counter_num, levels = c(1:max(as.integer(counters$counter_num))),ordered = TRUE) # might as well do it for the counters table as well
+
+trails <- data.frame(trail_id = c(1:13), trail_name = c("W&OD","Custis","Four Mile Run","Mount Vernon","Bluemont Connector","Arlington Mill","110 Trail","Holmes Run","Eisenhower","Potomac Yard","Four Mile Park","Met Branch","Capital Crescent"))
+counters$trail_id <- factor(counters$trail_id,levels = c(1:max(trails$trail_id)),ordered = TRUE)
+counters$trail_id[counters$counter_num %in% c(25)] <- "1" # Mark additional W&OD counters
+counters$trail_id[counters$counter_num %in% c(24,28)] <- "2" # Mark additional Custis counters
+counters$trail_id[counters$counter_num %in% c(5)] <- "3" # Mark additional FMR counters
+counters$trail_id[counters$counter_num %in% c(9,11,30,31,34,36,41)] <- "4" # Mark additional MVT counters
+counters$trail_id[counters$counter_num %in% c(23)] <- "5" # Mark Bluemont Connector counters
+counters$trail_id[counters$counter_num %in% c(32)] <- "6" # Mark Arlington Mill counters
+counters$trail_id[counters$counter_num %in% c(33)] <- "7" # Mark 110 Trail counters
+counters$trail_id[counters$counter_num %in% c(37)] <- "8" # Mark Holmes Run counters
+counters$trail_id[counters$counter_num %in% c(38)] <- "9" # Mark Eisenhower counters
+counters$trail_id[counters$counter_num %in% c(39)] <- "10" # Mark Potomac Yard counters
+counters$trail_id[counters$counter_num %in% c(42)] <- "11" # Mark Four Mile Park counters
+counters$trail_id[counters$counter_num %in% c(45)] <- "12" # Mark MBT counters
+counters$trail_id[counters$counter_num %in% c(47,48)] <- "13" # Mark CCT counters
+
+counters <- merge(counters,trails, by = c("trail_id"),suffixes = c("_delete",""))
+refcols <- c("counter_num","name","trail_id","trail_name")
+counters <- counters[, c(refcols, setdiff(names(counters), refcols))]
+counters <- counters[, !(names(counters) %in% c("trail_name_delete"))]
+
+save(counters, file="counters.Rda")
+
+
 # done importing files, switch to Analysis dir
 setwd("~/Dropbox/VT coursework/Capstone/Analysis")
 
@@ -78,10 +106,10 @@ badweeks <- baddates
 checktimes <- seq(min(combineddata$datetime),max(combineddata$datetime),by = "15 min")
 
 ## dates with missing data points per counter
-for (i in countersindata) baddates[[i]] <- unique(date(as.POSIXlt(setdiff(checktimes,combineddata$datetime[combineddata$counter_num == i]),origin=origin)))
+for (i in countersindata) baddates[[as.character(i)]] <- unique(date(as.POSIXlt(setdiff(checktimes,combineddata$datetime[combineddata$counter_num == i]),origin=origin)))
 ## mark all data points on each of those days
 for (i in countersindata) combineddata$DeleteMe[combineddata$counter_num == i & 
-                                                  combineddata$date %in% baddates[[i]]] <- TRUE
+                                                  combineddata$date %in% baddates[[as.character(i)]]] <- TRUE
 
 #also mark the first day of data for each counter (though it probably got caught by the above already)
 for (i in countersindata) combineddata$DeleteMe[combineddata$counter_num == i & 
@@ -94,11 +122,11 @@ names(counters)[names(counters) == "date"] <- "min_date_data"
 
 #find weeks where data will be deleted for each counter
 combineddata$YearWeek <- paste(combineddata$Year,combineddata$Week, sep = ".")
-for (i in countersindata) badweeks[[i]] <- unique(combineddata$YearWeek[combineddata$DeleteMe == TRUE &
+for (i in countersindata) badweeks[[as.character(i)]] <- unique(combineddata$YearWeek[combineddata$DeleteMe == TRUE &
                                                                     combineddata$counter_num == i])
 #mark the other data in those weeks for each counter, in case we decide to dump it later
 for (i in countersindata) combineddata$SkipWeek[combineddata$counter_num == i & 
-                                                combineddata$YearWeek %in% badweeks[[i]]] <- TRUE
+                                                combineddata$YearWeek %in% badweeks[[as.character(i)]]] <- TRUE
 #how much data are we deleting?
 RemovedDataPoints <- nrow(combineddata[combineddata$DeleteMe == TRUE,])
 RemovedDataPct <- RemovedDataPoints/TotalData
