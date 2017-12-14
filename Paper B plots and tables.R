@@ -8,6 +8,7 @@ library(ggplot2)
 library(lattice)
 library(grid)
 library(stringi) # for week of month
+library(stringr)
 
 # Working in GMT to avoid having the labels shifted by 5 hours!
 Sys.setenv(TZ='GMT')
@@ -17,6 +18,7 @@ load("Arl_Webdata_Cleaned.Rda")
 load("Averagedays.Rda")
 load("RushCounts.Rda")
 load("Averagedays_long.Rda")
+load("Counters_processed.Rda")
 
 
 ##### summary statistics for paper
@@ -38,13 +40,12 @@ summary_days <- dcast(summary,counter_num ~ daytype,sum,value.var = "days", marg
 names(summary_n)[2:5] <- paste0("n_",names(summary_n)[2:5]) # rename columns before merging
 names(summary_days)[2:5] <- paste0("days_",names(summary_days)[2:5])
 
-table_1 <- merge(summary_n,summary_days)
-table_1 <- merge(counters,table_1)
-# table_1 <- merge(table_1,firstDays)
-# #table_1 <- table_1[,c("counter_num","name","trail_name","region","date","n_Workday","n_Weekend","n_(all)","days_other","days_Weekend","days_Workday","days_(all)")] # strip down to the variables we need to present
-# names(table_1)[names(table_1) == "date"] <- "earliest_date"
+table_1 <- merge(summary_days,summary_n)
+table_1 <- merge(counters,table_1, all.y = TRUE)
 
-#####  2015 info
+write.csv(table_1, file = "Table 1.csv", row.names = FALSE)
+
+#####  Table 2: 2015 info
 
 summary2015 <- combineddata_Cleaned %>%
   filter(Year == 2015 ) %>%
@@ -55,17 +56,48 @@ summary2015$daytype[summary2015$Workday] <- "Workday"
 summary2015$daytype[summary2015$Weekend] <- "Weekend"
 summary2015$daytype <- factor(summary2015$daytype,levels=c("Workday","Weekend","other"),ordered = TRUE) # Helps order columns later
 
+# days each counter was active in 2015
 summary2015_days <- dcast(summary2015,counter_num ~ daytype,sum,value.var = "days",margins = TRUE, subset = .(dir_mode == "inbound bicycle"))
-summary2015_total <- dcast(summary2015,counter_num ~ daytype + mode,sum,value.var = "total",margins = TRUE)
-summary2015_mean <- dcast(summary2015,counter_num ~ daytype + mode,sum,value.var = "average",margins = TRUE)
 
-names(summary2015_days)[2:5] <- paste0("days_2015_", names(summary2015_days)[2:5])
-names(summary2015_total)[2:11] <- paste0("total_2015_", names(summary2015_total)[2:11])
-names(summary2015_mean)[2:11] <- paste0("mean_2015_", names(summary2015_mean)[2:11])
+# total 2015 traffic for each counter
+summary2015_total <- dcast(summary2015,counter_num ~ daytype + mode,sum,value.var = "total",margins = TRUE)
+lastcol <- tail(names(summary2015_total), 1) #check on the last margin column
+summary2015_total$"(all)_B" <- summary2015_total$Workday_B + summary2015_total$Weekend_B + summary2015_total$other_B
+summary2015_total$"(all)_P" <- summary2015_total$Workday_P + summary2015_total$Weekend_P + summary2015_total$other_P
+summary2015_total <- summary2015_total[,c(setdiff(names(summary2015_total),lastcol),lastcol)]
+
+# mean 2015 traffic for each counter
+summary2015_mean <- data.frame(counter_num = summary2015_total$counter_num) # initialize
+for (i in names(summary2015_total)[-1]) summary2015_mean[[i]] <- summary2015_total[[i]] / summary2015_days[[unlist(strsplit(i,"_"))[1]]] # calculate the right means
+
+# I/O ratios
+factors <- expand.grid(c(levels(summary2015$mode),"(all)"), c(levels(summary2015$daytype),"(all)"))
+factors$text <- paste(factors$Var2,factors$Var1,sep = "_")
+
+summary2015_IO <- dcast(summary2015, counter_num ~ daytype + mode + direction, sum, value.var = "total", margins = TRUE)
+# some aggregates ("margins") are missing after dcast. Find which ones:
+missingcols <- data.frame(colname = setdiff(c(paste0(factors$text,"_I"),paste0(factors$text,"_O")),names(summary2015_IO)))
+# create search strings to pull out the columns that should be summed for each missing aggregate
+missingcols$search_str <- gsub("(all)","[a-zA-Z]+",missingcols$colname, fixed = TRUE)
+for (i in 1:nrow(missingcols)) summary2015_IO[[as.character(missingcols$colname[i])]] <- rowSums(select(summary2015_IO,matches(missingcols$search_str[i])))
+
+summary2015_IOratio <- data.frame(counter_num = summary2015_IO$counter_num)
+for (i in factors$text) summary2015_IOratio[[i]] <- summary2015_IO[[paste0(i,"_I")]] / summary2015_IO[[paste0(i,"_O")]]
+
+# assign unique column names
+names(summary2015_days)[-1] <- paste0("days_2015_", names(summary2015_days)[-1])
+names(summary2015_total)[-1] <- paste0("total_2015_", names(summary2015_total)[-1])
+names(summary2015_mean)[-1] <- paste0("mean_2015_", names(summary2015_mean)[-1])
+names(summary2015_IOratio)[-1] <- paste0("IO_2015_", names(summary2015_IOratio[-1]))
+
+
 
 summary2015_combined <- merge(summary2015_days,summary2015_total)
 summary2015_combined <- merge(summary2015_combined,summary2015_mean)
+summary2015_combined <- merge(summary2015_combined,summary2015_IOratio)
 
-table_1 <- merge(table_1,summary2015_combined, by = "counter_num",all = TRUE)
 
-write.csv(table_1, file = "Table 1.csv", row.names = FALSE)
+
+table_2 <- merge(table_1[,1:2],summary2015_combined, by = "counter_num",all = TRUE)
+
+write.csv(table_2, file = "Table 2.csv", row.names = FALSE)

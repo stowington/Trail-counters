@@ -14,6 +14,10 @@ setwd("~/Dropbox/VT coursework/Capstone/Counter data") # Data dir on John's comp
 #import manually constructed CSV with holidays and other dates of concern
 holidays <- read.csv("Holidays.csv")
 
+
+# done importing files, switch to Analysis dir
+setwd("~/Dropbox/VT coursework/Capstone/Analysis")
+
 #The website's trail information is incomplete
 #first, define factor levels to avoid potential mismatches and improve sorting
 counters$counter_num <- factor(counters$counter_num, levels = c(1:max(as.integer(counters$counter_num))),ordered = TRUE) # might as well do it for the counters table as well
@@ -39,11 +43,9 @@ refcols <- c("counter_num","name","trail_id","trail_name")
 counters <- counters[, c(refcols, setdiff(names(counters), refcols))]
 counters <- counters[, !(names(counters) %in% c("trail_name_delete"))]
 
-save(counters, file="counters.Rda")
+save(counters, file="Counters_processed.Rda")
 
 
-# done importing files, switch to Analysis dir
-setwd("~/Dropbox/VT coursework/Capstone/Analysis")
 
 #Transform the count vector from charactar to integer
 if(is.character(combineddata$count)) combineddata$count <- type.convert(combineddata$count,as.is = TRUE) #as.is = TRUE prevents it becoming a factor variable, which shouldn't happen anyway
@@ -174,6 +176,7 @@ combineddata_Cleaned$dir_mode <- factor(combineddata_Cleaned$dir_mode, levels = 
 setwd("~/Dropbox/VT coursework/Capstone/Analysis")
 #### save R file
 save(combineddata_Cleaned, file="Arl_Webdata_Cleaned.Rda")
+save(counters, file = "Counters_processed.Rda")
 
 # get the average time course at each location for weekdays vs. weekends vs. holidays vs. OPM closures
 Averagedays <- aggregate(cbind(count)
