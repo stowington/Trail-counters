@@ -9,7 +9,7 @@ library(stringi)
 
 setwd("~/Dropbox/VT coursework/Capstone/Counter data") # Data dir on John's computer
  load("Arl_Webdata_Combined_newattempt.Rda") # loaded data frame is called combineddata
-# load("counters.Rda") # loaded data frame is called counters
+ load("counters.Rda") # loaded data frame is called counters
 
 #import manually constructed CSV with holidays and other dates of concern
 holidays <- read.csv("Holidays.csv")
@@ -20,13 +20,13 @@ setwd("~/Dropbox/VT coursework/Capstone/Analysis")
 
 #The website's trail information is incomplete
 #first, define factor levels to avoid potential mismatches and improve sorting
-counters$counter_num <- factor(counters$counter_num, levels = c(1:max(as.integer(counters$counter_num))),ordered = TRUE) # might as well do it for the counters table as well
+counters$counter_num <- factor(counters$counter_num, levels = c(1:max(as.integer(paste(counters$counter_num)))),ordered = TRUE) # might as well do it for the counters table as well
 
-trails <- data.frame(trail_id = c(1:13), trail_name = c("W&OD","Custis","Four Mile Run","Mount Vernon","Bluemont Connector","Arlington Mill","110 Trail","Holmes Run","Eisenhower","Potomac Yard","Four Mile Park","Met Branch","Capital Crescent"))
+trails <- data.frame(trail_id = c(1:14), trail_name = c("W&OD","Custis","Four Mile Run","Mount Vernon","Bluemont Connector","Arlington Mill","110 Trail","Holmes Run","Eisenhower","Potomac Yard","Four Mile Park","Met Branch","Capital Crescent","Key Bridge"))
 counters$trail_id <- factor(counters$trail_id,levels = c(1:max(trails$trail_id)),ordered = TRUE)
 counters$trail_id[counters$counter_num %in% c(25)] <- "1" # Mark additional W&OD counters
 counters$trail_id[counters$counter_num %in% c(24,28)] <- "2" # Mark additional Custis counters
-counters$trail_id[counters$counter_num %in% c(5)] <- "3" # Mark additional FMR counters
+counters$trail_id[counters$counter_num %in% c(5,6)] <- "3" # Mark additional FMR counters
 counters$trail_id[counters$counter_num %in% c(9,11,30,31,34,36,41)] <- "4" # Mark additional MVT counters
 counters$trail_id[counters$counter_num %in% c(23)] <- "5" # Mark Bluemont Connector counters
 counters$trail_id[counters$counter_num %in% c(32)] <- "6" # Mark Arlington Mill counters
@@ -37,10 +37,11 @@ counters$trail_id[counters$counter_num %in% c(39)] <- "10" # Mark Potomac Yard c
 counters$trail_id[counters$counter_num %in% c(42)] <- "11" # Mark Four Mile Park counters
 counters$trail_id[counters$counter_num %in% c(45)] <- "12" # Mark MBT counters
 counters$trail_id[counters$counter_num %in% c(47,48)] <- "13" # Mark CCT counters
+counters$trail_id[counters$counter_num %in% c(7,8)] <- "14" # Mark CCT counters
 
-counters <- merge(counters,trails, by = c("trail_id"),suffixes = c("_delete",""))
+counters <- merge(counters,trails, by = c("trail_id"),suffixes = c("_delete",""),all = TRUE) # mark the original trail name column for deletion
 refcols <- c("counter_num","name","trail_id","trail_name")
-counters <- counters[, c(refcols, setdiff(names(counters), refcols))]
+counters <- counters[, c(refcols, setdiff(names(counters), refcols))] # reorder columns
 counters <- counters[, !(names(counters) %in% c("trail_name_delete"))]
 
 save(counters, file="Counters_processed.Rda")
@@ -83,7 +84,23 @@ combineddata$Day <- factor(combineddata$Day, levels=c("Sunday","Monday","Tuesday
 combineddata$Month <- factor(combineddata$Month, levels=c("January","February","March","April","May","June","July","August","September","October","November","December"), ordered = TRUE)
 combineddata$counter_num <- factor(combineddata$counter_num, levels = c(1:max(as.integer(counters$counter_num))),ordered = TRUE) # defining the levels as all of the possible integer assignments to avoid potentially confusing mismatches
 combineddata$direction <- factor(combineddata$direction)
+combineddata$mode[combineddata$counter_num == "5"] <- "B" # some of this bike-only counter's data was mislabeled as "A" in the database
 combineddata$mode <- factor(combineddata$mode)
+
+## Counter 6, FMR pyro, counts bike/ped combined, but the ped counts can be recovered 
+## by subtracting the bike counts from counter 5, FMR piezo 
+# 
+# commondt56 <- union(combineddata$datetime[combineddata$counter_num == "5"], 
+#                     combineddata$datetime[combineddata$counter_num == "6"])
+# counter6_ped <- merge(combineddata[combineddata$counter_num == "6" &
+#                                      combineddata$datetime %in% commondt56,],
+#                       combineddata[combineddata$counter_num == "5" &
+#                                      combineddata$datetime %in% commondt56,
+#                                    c("datetime","direction","count")],
+#                       by = c("datetime","direction"),
+#                       suffixes = c("_6","_5"))
+# counter6_ped$count <- counter6_ped$count_6 - counter6_ped$count_5
+## nearly 18% of the result was negative, so I'm commenting this section out and dropping counter 6 entirely.
 
 # time for cleanup, dump data we can tell is bad
 # no deletions yet, how many rows do we have?

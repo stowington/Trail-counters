@@ -11,7 +11,7 @@ library(lubridate) # for date checking
 #names(df) <- c('count','date','direction', 'type')
 
 failed_urls <- c()
-downloadCounterXMLtoDF <- function(url,sleep = 300) {
+downloadCounterXMLtoDF <- function(url,sleep = 0) {
   
   doc <- try(xmlTreeParse(url, useInternal=T)) #downloads sometimes fail, we want to keep going with the rest
   if(inherits(doc,"try-error")) { 
@@ -47,11 +47,11 @@ downloadCounterXMLtoDF <- function(url,sleep = 300) {
   #add counter id from the URL
   r <- "&counterid=(\\d+)" 
   df$counter_num <- str_match(url,r)[[2]]
-  print(paste("Downloaded counter:",df$counter_num[1],"direction:",df$direction[1],"mode:",df$mode[1],sep=" "))
+  print(paste("Downloaded counter:",df$counter_num[1],"direction:",df$direction[1],"mode:",df$mode[1],"date:",df$date[1],sep=" "))
   
   Sys.sleep(sleep) # wait since the server seems to choke with rapid large requests. Default is 300 seconds = 5 minutes
   return(df)
-
+  
 }
 
 downloadCounterMinDatestoDF <- function(counternum) {
@@ -66,8 +66,26 @@ downloadCounterMinDatestoDF <- function(counternum) {
     d <- xmlToList(doc)
     mindate <- d[["data"]][["struct"]][["var"]][["string"]]
   }
-
+  
   return(data.frame(counter_num=as.character(counternum),min_date_web=mindate,stringsAsFactors = FALSE))
+  
+  
+}
+
+downloadCounterMaxDatestoDF <- function(counternum) {
+  min_url <- paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&method=GetMaxDates&CounterID=',counternum)
+  
+  doc <- try(xmlParse(min_url)) #downloads sometimes fail, we want to keep going with the rest
+  if(inherits(doc,"try-error")) { 
+    print(paste("Download failed on url ", url))
+    #return empty data frame to keep batch downloads running
+    maxdate <- ""
+  } else {
+    d <- xmlToList(doc)
+    maxdate <- d[["data"]][["struct"]][["var"]][["string"]]
+  }
+  
+  return(data.frame(counter_num=as.character(counternum),max_date_web=maxdate,stringsAsFactors = FALSE))
   
   
 }
@@ -89,10 +107,14 @@ downloadcounterinfo <-function() {
 
 # grab counter info (names, coordinates)
 counters <- downloadcounterinfo()
-# add min dates for each counter - useful for double-checking the data later
+# add min and max dates for each counter - useful for double-checking the data later, and for avoiding unnecessary download attempts
 incomingdata <- lapply(counters$counter_num,downloadCounterMinDatestoDF)
 counters <- merge(counters,rbindlist(incomingdata))
 counters$min_date_web <- mdy(counters$min_date_web)
+
+incomingdata <- lapply(counters$counter_num,downloadCounterMaxDatestoDF)
+counters <- merge(counters,rbindlist(incomingdata))
+counters$max_date_web <- mdy(counters$max_date_web)
 
 
 # Which counters do we want? For now, only trails in Arlington
@@ -102,7 +124,7 @@ countersofinterest <- c(1,2,3,5,9,11,12,23,24,25,28,30,31,32,33,34,36,37,38,39,4
 
 
 # dates for study: 1/1/2009 - 6/3/2016
-datesofinterest <- c("1/1/2010","6/30/2010")
+# datesofinterest <- c("1/1/2010","6/30/2010")
 
 # Assemble all the query URLs for the webserver
 ## HARD WAY with different factors
@@ -218,14 +240,27 @@ intermediate_dates <- c(seq(startdate,enddate,by = "6 months"),enddate) #adjust 
 counter_urls <- c() #initialize list of request URLs
 for (i in 1:(length(intermediate_dates)-1)) {
   activecounters <- counters$counter_num[counters$counter_num %in% countersofinterest & 
-                                           counters$min_date_web < intermediate_dates[i +1]]
+                                           counters$min_date_web < intermediate_dates[i +1] &
+                                           counters$max_date_web > intermediate_dates[i] - 1]
   datesofinterest <- c(format(intermediate_dates[i],format="%m/%d/%Y"),
                        format(intermediate_dates[i+1]-1,format="%m/%d/%Y"))
   
-  factors <- expand.grid(counterid = activecounters, direction = c("I","O"), mode = c("P","B"))
-  counter_urls <- append(counter_urls,paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m'))
- # print(paste("i =",i,"activecounters =",paste(activecounters,collapse = ", ")))
+  # print(paste("i =",i,"activecounters =",paste(activecounters,collapse = ", ")))
+  
+  if (5 %in% activecounters){ # some of this bike-only counter's data was miscoded as "A" for "All Modes" and gets skipped if we ask for bike explicitly
+    factors <- expand.grid(counterid = 5, direction = c("I","O"))
+    counter_urls <- append(counter_urls,paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&interval=m'))
+    activecounters <- activecounters[activecounters!=5]
+  }
+  
+  if (length(activecounters) > 0){
+    factors <- expand.grid(counterid = activecounters, direction = c("I","O"), mode = c("P","B"))
+    counter_urls <- append(counter_urls,paste0('http://webservices.commuterpage.com/counters.cfc?wsdl&counterid=',factors$counterid,'&method=GetCountInDateRange&startDate=',datesofinterest[1],'&endDate=',datesofinterest[2],'&direction=',factors$direction,'&mode=',factors$mode,'&interval=m'))
+  }
+  
 }
+
+
 
 # library(future)
 # plan(multiprocess)
@@ -243,12 +278,16 @@ setwd("~/Dropbox/VT coursework/Capstone/Counter data")
 # save(combineddata, file="Arl_Webdata_Combined.Rda")
 # save(counters, file="counters.Rda")
 
- ## Clean up large temp variables
- rm(list=c("incomingdata","piecemealdata"))
+## Clean up large temp variables
+rm(list=c("incomingdata","piecemealdata"))
 
 ##### save CSV in shared dir
 # setwd("~/Dropbox/Processed Counter Data & R code/") # Dir on John's computer
 # write.csv(combineddata, "Arl_Webdata_Combined.csv")
 
-
-
+##### For appending additional data to existing dataset (USE WITH CAUTION!):
+# combineddata_new <- combineddata # rename combineddata before loading the file which is also called combineddata
+# setwd("~/Dropbox/VT coursework/Capstone/Counter data") # Data dir on John's computer
+# load("Arl_Webdata_Combined.Rda") # loaded data frame is called combineddata
+# combineddata <- unique(rbind(combineddata,combineddata_new)) # add the new stuff, skip duplicates
+# save(combineddata, file="Arl_Webdata_Combined.Rda")
