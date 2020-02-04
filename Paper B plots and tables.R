@@ -13,16 +13,21 @@ library(stringr)
 # Working in GMT to avoid having the labels shifted by 5 hours!
 Sys.setenv(TZ='GMT')
 
-setwd("~/Dropbox/VT coursework/Capstone/Analysis") # Dir for prepped data on John's computer
+setwd("~/Google Drive (jstowe@vt.edu)/VT coursework/Capstone/Analysis") # Dir for prepped data on John's computer
 load("Arl_Webdata_Cleaned.Rda")
 load("Averagedays.Rda")
 load("RushCounts.Rda")
 load("Averagedays_long.Rda")
 load("Counters_processed.Rda")
 
+##### helper functions #####
+boolean_labeller <- labeller(
+  Workday = c("FALSE" = "Weekend","TRUE" ="Workday"),
+  .default = label_both
+)
 
-##### summary statistics for paper
-##### 
+
+##### summary statistics for paper #####
 
 summary <- combineddata_Cleaned %>%
   group_by(counter_num,Weekend,Workday) %>%
@@ -33,8 +38,8 @@ summary$daytype[summary$Weekend] <- "Weekend"
 summary$daytype <- factor(summary$daytype,levels=c("Workday","Weekend","other"),ordered = TRUE) # Helps order columns later
 
 
-##### table 1: overall counter info
-#####
+##### table 1: overall counter info #####
+
 summary_n <- dcast(summary,counter_num ~ daytype,sum,value.var = "n_obs", margins = TRUE)
 summary_days <- dcast(summary,counter_num ~ daytype,sum,value.var = "days", margins = TRUE)
 names(summary_n)[2:5] <- paste0("n_",names(summary_n)[2:5]) # rename columns before merging
@@ -45,7 +50,7 @@ table_1 <- merge(counters,table_1, all.y = TRUE)
 
 write.csv(table_1, file = "Table 1.csv", row.names = FALSE)
 
-#####  Table 2: 2015 info
+#####  Table 2: 2015 info #####
 
 summary2015 <- combineddata_Cleaned %>%
   filter(Year == 2015 ) %>%
@@ -101,3 +106,90 @@ summary2015_combined <- merge(summary2015_combined,summary2015_IOratio)
 table_2 <- merge(table_1[,1:2],summary2015_combined, by = "counter_num",all = TRUE)
 
 write.csv(table_2, file = "Table 2.csv", row.names = FALSE)
+
+##### Figure 2: Rosslyn Bikeometer example #####
+RushRects <- data.frame(xmin = c(7/24, 16/24),xmax = c(10/24,19/24),ymin = -Inf, ymax = Inf, alpha = 0.2, Daytype = factor(c("Weekday","Weekday"), levels = c("Weekday","Holiday","Weekend","Likely abnormal","OPM action","Other events")))
+
+p <- ggplot(Averagedays_monthyear[!Averagedays_monthyear$Likely.abnormal & 
+                          !Averagedays_monthyear$OPM.action & 
+                            Averagedays_monthyear$counter_num == "28" &
+                            Averagedays_monthyear$Year == "2015" &
+                            Averagedays_monthyear$Month == "May",],
+            aes(x = time, y = count)) + 
+  geom_rect(data=RushRects, mapping = aes(x=NULL, y=NULL, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), alpha=0.2) +
+  geom_line(aes(color = dir_mode)) + 
+  scale_x_chron(format="%H:%M",n=8, minor_breaks=seq(0,1,1/24))
+p + 
+  ggtitle("Average traffic May 2015,\nRosslyn Bikeometer") + facet_grid(Daytype ~ .) + scale_colour_brewer(palette = "Set1")
+
+ggsave("Fig 2 Rosslyn Bikeometer.png",width = 3,height = 2, units = "in",scale = 2,path = "~/Google Drive (jstowe@vt.edu)/VT coursework/Capstone/figures/Paper B")
+
+# some numbers relevant to describing Fig. 2
+Fig2a <- 
+  #low-level summary
+  Averagedays_monthyear %>%
+    filter(!Averagedays_monthyear$Likely.abnormal & 
+      !Averagedays_monthyear$OPM.action & 
+      Averagedays_monthyear$counter_num == "28" &
+      Averagedays_monthyear$Year == "2015" &
+      Averagedays_monthyear$Month == "May") %>%
+    group_by(Daytype, mode, direction) %>%
+    summarise(max = max(count),
+              time_max = time[which(count == max(count))],
+              daily = sum(count),
+              pct_rush = sum(count[which(cut(time,rushbins,right = FALSE) %in% c("[0.292,0.417)","[0.667,0.792)"))]) / daily,
+              n_obs = n()
+              )
+Fig2b <- merge(
+  #combine across directions
+  Averagedays_monthyear %>%
+    filter(!Averagedays_monthyear$Likely.abnormal & 
+             !Averagedays_monthyear$OPM.action & 
+             Averagedays_monthyear$counter_num == "28" &
+             Averagedays_monthyear$Year == "2015" &
+             Averagedays_monthyear$Month == "May"
+           ) %>%
+    group_by(Daytype, mode, time, direction) %>% #need to aggregate across the directions for each first so the max calculations work right
+    summarise(count = sum(count),
+              inbound = sum(count[which(direction=="I")]),
+              outbound = sum(count[which(direction=="O")])
+              ) %>%
+    summarise(count = sum(count),
+              inbound = sum(inbound),
+              outbound = sum(outbound)
+              ) %>% 
+    summarise(mode_max = max(count),
+              time_mode_max = time[which(count == max(count))],
+              mode_daily = sum(count),
+              mode_pct_rush = sum(count[which(cut(time,rushbins,right = FALSE) %in% c("[0.292,0.417)","[0.667,0.792)"))]) / mode_daily,
+              inbound = sum(inbound),
+              outbound = sum(outbound),
+              mode_IO_ratio = inbound/outbound
+              )
+  ,
+  RushMeans_monthyear  %>%
+    filter(!RushMeans_monthyear$Likely.abnormal & 
+             !RushMeans_monthyear$OPM.action & 
+             RushMeans_monthyear$counter_num == "28" &
+             RushMeans_monthyear$Year == "2015" &
+             RushMeans_monthyear$Month == "May"
+    ) %>%
+    group_by(Daytype, mode, cuts, direction) %>%
+    summarise(count = sum(count),
+              inbound = sum(count[which(direction=="I")]),
+              outbound = sum(count[which(direction=="O")])
+              ) %>%
+    summarise(count = sum(count),
+              inbound = sum(inbound),
+              outbound = sum(outbound),
+              IO_ratio = inbound/outbound) %>% 
+    summarise(mode_daily = sum(count),
+              inbound = sum(inbound),
+              outbound = sum(outbound),
+              mode_pct_rush = sum(count[which(cuts %in% c("[0.292,0.417)","[0.667,0.792)"))]) / mode_daily,
+              morning_rush_IO_ratio = IO_ratio[which(cuts=="[0.292,0.417)")],
+              evening_rush_IO_ratio = IO_ratio[which(cuts=="[0.667,0.792)")],
+              IO_ratio = inbound/outbound
+              )
+)
+

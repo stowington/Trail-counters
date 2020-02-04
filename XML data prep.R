@@ -7,7 +7,7 @@ library(ggplot2)
 library(lattice)
 library(stringi)
 
-setwd("~/Dropbox/VT coursework/Capstone/Counter data") # Data dir on John's computer
+setwd("~/Google Drive (jstowe@vt.edu)/VT coursework/Capstone/Counter data") # Data dir on John's computer
  load("Arl_Webdata_Combined_newattempt.Rda") # loaded data frame is called combineddata
  load("counters.Rda") # loaded data frame is called counters
 
@@ -16,7 +16,7 @@ holidays <- read.csv("Holidays.csv")
 
 
 # done importing files, switch to Analysis dir
-setwd("~/Dropbox/VT coursework/Capstone/Analysis")
+setwd("~/Google Drive (jstowe@vt.edu)/VT coursework/Capstone/Analysis")
 
 #The website's trail information is incomplete
 #first, define factor levels to avoid potential mismatches and improve sorting
@@ -188,9 +188,14 @@ combineddata_Cleaned$dir_mode[combineddata_Cleaned$mode == "P"] <- paste(combine
 # This should be a factor, and let's specify the levels in order so that bikes and peds are grouped together in tables and graphs
 combineddata_Cleaned$dir_mode <- factor(combineddata_Cleaned$dir_mode, levels = c("inbound bicycle","outbound bicycle","inbound pedestrian","outbound pedestrian"))
 
-
+combineddata_Cleaned$Daytype <- factor(ifelse(combineddata_Cleaned$Workday,"Weekday",
+                                          ifelse(combineddata_Cleaned$Holiday,"Holiday",
+                                                 ifelse(combineddata_Cleaned$Weekend,"Weekend",
+                                                        ifelse(combineddata_Cleaned$Likely.abnormal,"Likely abnormal",
+                                                               ifelse(combineddata_Cleaned$OPM.action,"OPM action","Other.events")))))
+                                   ,levels = c("Weekday","Weekend","Holiday","Likely abnormal","OPM action","Other.events"),ordered = TRUE)
 #working directory sanity check, should already be set from above
-setwd("~/Dropbox/VT coursework/Capstone/Analysis")
+setwd("~/Google Drive (jstowe@vt.edu)/VT coursework/Capstone/Analysis")
 #### save R file
 save(combineddata_Cleaned, file="Arl_Webdata_Cleaned.Rda")
 save(counters, file = "Counters_processed.Rda")
@@ -204,22 +209,43 @@ Averagedays <- aggregate(cbind(count)
 
 save(Averagedays, file="Averagedays.Rda")
 
+# deviation/confidence intervals assume Poisson distribution for the counts
+AveragedaysSE <- ddply(combineddata_Cleaned,
+                       c("time","time.text","direction","mode","dir_mode","counter_num","Weekend","Workday","Holiday","Likely.abnormal","OPM.action"),
+                       summarise,
+                       N = length(count),
+                       count_mean = mean(count),
+                       sd = sqrt(count_mean),
+                       ci_95 = 1.96 * sqrt(count_mean/N)
+)
+
+
 # get the average time course, by year, at each location for weekdays vs. weekends vs. holidays vs. OPM closures
 Averagedays_year <- aggregate(cbind(count)
                          ~ time+time.text+direction+mode+dir_mode+counter_num+Weekend+Workday+Holiday+Likely.abnormal+OPM.action+Year,
                          data=combineddata_Cleaned,mean,na.action = na.pass
 )
 
+# Averagedays_year$Daytype <- factor(ifelse(Averagedays_year$Workday,"Weekday",
+#                                           ifelse(Averagedays_year$Holiday,"Holiday",
+#                                                  ifelse(Averagedays_year$Weekend,"Weekend",
+#                                                         ifelse(Averagedays_year$Likely.abnormal,"Likely abnormal",
+#                                                                ifelse(Averagedays_year$OPM.action,"OPM action","Weekend")))))
+#                                    ,levels = c("Weekday","Weekend","Holiday","Likely abnormal","OPM action"),ordered = TRUE)
 
 save(Averagedays_year, file="Averagedays_year.Rda")
-
 
 # get the average time course, by month and year, at each location for weekdays vs. weekends vs. holidays vs. OPM closures
 Averagedays_monthyear <- aggregate(cbind(count)
                               ~ time+time.text+direction+mode+dir_mode+counter_num+Weekend+Workday+Holiday+Likely.abnormal+OPM.action+Month+Year,
                               data=combineddata_Cleaned,mean,na.action = na.pass
 )
-
+# Averagedays_monthyear$Daytype <- factor(ifelse(Averagedays_monthyear$Workday,"Weekday",
+#                                                ifelse(Averagedays_monthyear$Holiday,"Holiday",
+#                                                       ifelse(Averagedays_monthyear$Weekend, "Weekend",
+#                                                              ifelse(Averagedays_monthyear$Likely.abnormal,"Likely abnormal",
+#                                                                     ifelse(Averagedays_monthyear$OPM.action,"OPM action","Weekend")))))
+#                                         ,levels = c("Weekday","Weekend","Holiday","Likely abnormal","OPM action"),ordered = TRUE)
 
 save(Averagedays_monthyear, file="Averagedays_monthyear.Rda")
 
@@ -228,13 +254,50 @@ save(Averagedays_monthyear, file="Averagedays_monthyear.Rda")
 rushbins <- times(c("00:00:00","07:00:00","10:00:00","16:00:00","19:00:00","23:59:59"))
 combineddata_Cleaned$cuts <- cut(combineddata_Cleaned$time, rushbins,right=FALSE)
 RushCounts <- aggregate(cbind(count)
-                        ~ cuts+direction+mode+counter_num+Day+Weekend+Workday+Holiday+Likely.abnormal+OPM.action+Other.events,
+                        ~ cuts+direction+mode+counter_num+Weekend+Workday+Holiday+Likely.abnormal+OPM.action+Other.events,
                         data=combineddata_Cleaned,sum,na.action = na.pass
 )
+# RushCounts$Daytype <- factor(ifelse(RushCounts$Workday,"Weekday",
+#                                           ifelse(RushCounts$Holiday,"Holiday",
+#                                                  ifelse(RushCounts$Weekend,"Weekend",
+#                                                         ifelse(RushCounts$Likely.abnormal,"Likely abnormal",
+#                                                                ifelse(RushCounts$OPM.action,"OPM action",
+#                                                                       ifelse(RushCounts$Other.events,"Other events","Weekend"))))))
+#                              ,levels = c("Weekday","Weekend","Holiday","Likely abnormal","OPM action","Other events"),ordered = TRUE)
+
 save(RushCounts, file="RushCounts.Rda")
 # Same thing but calculate means
 RushMeans <- aggregate(cbind(count)
-                        ~ cuts+direction+mode+counter_num+Day+Weekend+Workday+Holiday+Likely.abnormal+OPM.action+Other.events,
+                        ~ cuts+direction+mode+counter_num+Weekend+Workday+Holiday+Likely.abnormal+OPM.action+Other.events,
                         data=combineddata_Cleaned,mean,na.action = na.pass
 )
+
+# RushMeans$Daytype <- factor(ifelse(RushMeans$Workday,"Weekday",
+#                                           ifelse(RushMeans$Holiday,"Holiday",
+#                                                  ifelse(RushMeans$Weekend,"Weekend",
+#                                                         ifelse(RushMeans$Likely.abnormal,"Likely abnormal",
+#                                                                ifelse(RushMeans$OPM.action,"OPM action",
+#                                                                       ifelse(RushMeans$Other.events,"Other events","Weekend"))))))
+#                                    ,levels = c("Weekday","Weekend","Holiday","Likely abnormal","OPM action","Other events"),ordered = TRUE)
 save(RushMeans, file="RushMeans.Rda")
+
+# and by month/year
+RushMeans_monthyear <- aggregate(cbind(count)
+                       ~ cuts+direction+mode+counter_num+Weekend+Workday+Holiday+Likely.abnormal+OPM.action+Month+Year,
+                       data=combineddata_Cleaned,mean,na.action = na.pass
+)
+
+# RushMeans_monthyear$Daytype <- factor(ifelse(RushMeans_monthyear$Workday,"Weekday",
+#                                    ifelse(RushMeans_monthyear$Holiday,"Holiday",
+#                                           ifelse(RushMeans_monthyear$Weekend, "Weekend",
+#                                                  ifelse(RushMeans_monthyear$Likely.abnormal,"Likely abnormal",
+#                                                         ifelse(RushMeans_monthyear$OPM.action,"OPM action",
+#                                                                ifelse(RushMeans_monthyear$Other.events,"Other events","Weekend"))))))
+#                             ,levels = c("Weekday","Weekend","Holiday","Likely abnormal","OPM action","Other events"),ordered = TRUE)
+save(RushMeans_monthyear, file="RushMeans_monthyear.Rda")
+
+# Info for drawing rush hour rectangles on the graphs
+# Include the following in ggplot2 statements:
+# geom_rect(data=RushRects, mapping = aes(x=NULL, y=NULL, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), alpha=0.2)
+RushRects <- data.frame(xmin = c(7/24, 16/24),xmax = c(10/24,19/24),ymin = -Inf, ymax = Inf, Daytype = factor(c("Weekday","Weekday"), levels = c("Weekday","Weekend","Holiday","Likely abnormal","OPM action","Other events")))
+save(RushRects, file="RushRects.Rda")

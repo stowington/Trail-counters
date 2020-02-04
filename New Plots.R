@@ -12,7 +12,7 @@ library(stringi) # for week of month
 # Working in GMT to avoid having the labels shifted by 5 hours!
 Sys.setenv(TZ='GMT')
 
-setwd("~/Dropbox/VT coursework/Capstone/Analysis") # Dir for prepped data on John's computer
+setwd("~/Google Drive (jstowe@vt.edu)/VT coursework/Capstone/Analysis") # Dir for prepped data on John's computer
 load("Averagedays.Rda")
 load("RushCounts.Rda")
 load("Averagedays_long.Rda")
@@ -228,7 +228,7 @@ yearmonthcountercheckraw <- function(yearnum,monthname,counternum) {
 further_investigation_table <- read.csv("further investigation list.csv")
 
 previouspath <- getwd()
-setwd("~/Dropbox/VT coursework/Capstone/Analysis/Plots/Datacheck")
+setwd("~/Google Drive (jstowe@vt.edu)/VT coursework/Capstone/Analysis/Plots/Datacheck")
 apply(further_investigation_table,1,function(params)yearmonthcountercheckraw(params[1],params[2],params[3]))
 
 setwd(previouspath)
