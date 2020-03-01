@@ -3,7 +3,7 @@ library(stringr) # for str_match
 library(data.table) # for rbindlist
 library(lubridate) # for date checking
 
-# sample code from https://github.com/bfrickert/data_product_project/blob/master/data_product_project/index.Rmd
+# sample code from https://github.com/bfrickert/Bike_Arlington/blob/master/server.R   #link updated Feb. 29 2020
 #url <- 'http://webservices.commuterpage.com/counters.cfc?wsdl&method=GetCountInDateRange&counterid=4&startDate=01/01/2005&endDate=10/31/2015&direction=&mode=B&interval=d'
 #doc <- xmlTreeParse(url, useInternal=T)
 #top <- xmlRoot(doc)
